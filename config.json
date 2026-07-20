@@ -10,7 +10,7 @@
   "negative_samples": 8,
   "temperatures": [0.02, 0.05, 0.2],
   "batch_per_gpu": 2,
-  "max_steps": 6000,
+  "max_steps": 20000,
   "learning_rate": 1.25e-5,
   "warmup_steps": 500,
   "weight_decay": 0.01,
