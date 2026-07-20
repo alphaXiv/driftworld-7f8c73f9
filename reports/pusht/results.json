@@ -7,7 +7,8 @@
   "hardware": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
   "backend": "kubernetes",
   "peakConcurrentGpuCount": 16,
-  "campaignWallHours": 0.5406,
+  "campaignWallHours": 4.3892,
+  "scope": "Per-seed arrays for the primary 6k runs; aggregate 20k/60k and ablation evidence is in evidence.json.",
   "methods": {
     "MSE": {
       "branch": "orx/mse-independent-seeds",

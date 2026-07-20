@@ -158,11 +158,128 @@
       "latency_ms_per_frame_mean": 1.05707109,
       "true_vs_shuffled_mse_gain_mean": 0.00000128057,
       "script_wall_seconds": 2151.431
+    },
+    "mse_20k": {
+      "branch": "orx/mse-20k-updates",
+      "seeds": 8,
+      "heldout_mse_mean": 0.00060434190,
+      "heldout_mse_std": 0.00000681231,
+      "heldout_ssim_mean": 0.98215491,
+      "rollout_mse_mean": 0.00521128898,
+      "rollout_mse_std": 0.00040811728,
+      "rollout_ssim_mean": 0.89307985,
+      "latency_ms_per_frame_mean": 1.07182709,
+      "latency_ms_per_frame_std": 0.03229520,
+      "action_effect_l1_mean": 0.00124220367,
+      "true_vs_shuffled_mse_gain_mean": 0.00001250822,
+      "script_wall_seconds": 491.313
+    },
+    "mse_60k": {
+      "branch": "orx/mse-60k-updates",
+      "seeds": 8,
+      "heldout_mse_mean": 0.00043871731,
+      "heldout_mse_std": 0.00002904942,
+      "heldout_ssim_mean": 0.98775985,
+      "rollout_mse_mean": 0.00416457793,
+      "rollout_mse_std": 0.00047058654,
+      "rollout_ssim_mean": 0.91926947,
+      "latency_ms_per_frame_mean": 1.05874724,
+      "latency_ms_per_frame_std": 0.03253132,
+      "action_effect_l1_mean": 0.00581469684,
+      "true_vs_shuffled_mse_gain_mean": 0.00049084213,
+      "script_wall_seconds": 1481.177
+    },
+    "drift_60k": {
+      "branch": "orx/drift-60k-updates",
+      "seeds": 8,
+      "heldout_mse_mean": 0.04748037225,
+      "heldout_mse_std": 0.00014170050,
+      "heldout_ssim_mean": 0.92479311,
+      "rollout_mse_mean": 0.09947075509,
+      "rollout_mse_std": 0.01731704821,
+      "rollout_ssim_mean": 0.51595096,
+      "latency_ms_per_frame_mean": 1.06097910,
+      "latency_ms_per_frame_std": 0.04248937,
+      "action_effect_l1_mean": 0.00046695689,
+      "true_vs_shuffled_mse_gain_mean": 0.00000292808,
+      "script_wall_seconds": 6402.687
+    },
+    "repulsion_weight_0_001": {
+      "branch": "orx/drift-repulsion-weight-0-001",
+      "seeds": 8,
+      "heldout_mse_mean": 0.00159919227,
+      "heldout_mse_std": 0.00004347320,
+      "rollout_mse_mean": 0.00706660072,
+      "rollout_mse_std": 0.00028381378,
+      "latency_ms_per_frame_mean": 1.08027138,
+      "true_vs_shuffled_mse_gain_mean": 0.00000092502,
+      "script_wall_seconds": 662.500
+    },
+    "repulsion_weight_0_01": {
+      "branch": "orx/drift-repulsion-weight-0-01",
+      "seeds": 8,
+      "heldout_mse_mean": 0.00299795505,
+      "heldout_mse_std": 0.00004509129,
+      "rollout_mse_mean": 0.00970703340,
+      "rollout_mse_std": 0.00064855953,
+      "latency_ms_per_frame_mean": 1.08036336,
+      "true_vs_shuffled_mse_gain_mean": 0.00000075685,
+      "script_wall_seconds": 662.841
+    },
+    "repulsion_weight_0_5": {
+      "branch": "orx/drift-repulsion-weight-0-5",
+      "seeds": 8,
+      "heldout_mse_mean": 0.03376236139,
+      "heldout_mse_std": 0.00014563214,
+      "rollout_mse_mean": 0.07003117539,
+      "rollout_mse_std": 0.01389490085,
+      "latency_ms_per_frame_mean": 1.05948807,
+      "true_vs_shuffled_mse_gain_mean": 0.00000027940,
+      "script_wall_seconds": 662.235
+    },
+    "repulsion_weight_0_1": {
+      "branch": "orx/drift-repulsion-weight-0-1",
+      "seeds": 8,
+      "heldout_mse_mean": 0.01240006089,
+      "heldout_mse_std": 0.00009054467,
+      "rollout_mse_mean": 0.02654118417,
+      "rollout_mse_std": 0.00308393915,
+      "latency_ms_per_frame_mean": 1.06161335,
+      "true_vs_shuffled_mse_gain_mean": 0.00000036240,
+      "script_wall_seconds": 662.848
+    },
+    "repulsion_weight_0_01_20k": {
+      "branch": "orx/repulsion-0-01-at-20k-updates",
+      "seeds": 8,
+      "heldout_mse_mean": 0.00265617386,
+      "heldout_mse_std": 0.00008232149,
+      "rollout_mse_mean": 0.00823201204,
+      "rollout_mse_std": 0.00035922530,
+      "latency_ms_per_frame_mean": 1.08558354,
+      "true_vs_shuffled_mse_gain_mean": 0.00000157399,
+      "script_wall_seconds": 2150.755
+    },
+    "attraction_only_60k": {
+      "branch": "orx/attraction-only-60k-updates",
+      "seeds": 8,
+      "heldout_mse_mean": 0.00078013083,
+      "heldout_mse_std": 0.00009199431,
+      "heldout_ssim_mean": 0.98088516,
+      "rollout_mse_mean": 0.00451760041,
+      "rollout_mse_std": 0.00017673166,
+      "rollout_ssim_mean": 0.91531523,
+      "latency_ms_per_frame_mean": 1.05701882,
+      "action_effect_l1_mean": 0.00025736922,
+      "true_vs_shuffled_mse_gain_mean": 0.00000359464,
+      "script_wall_seconds": 6402.390
     }
   },
   "compute": {
     "backend": "kubernetes",
     "gpu_model": "NVIDIA RTX PRO 6000 Blackwell",
-    "peak_concurrent_gpu_count": 16
+    "peak_concurrent_gpu_count": 16,
+    "campaign_start_utc": "2026-07-20T09:35:13Z",
+    "campaign_end_utc": "2026-07-20T13:58:34Z",
+    "campaign_wall_hours": 4.3892
   }
 }

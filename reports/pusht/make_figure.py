@@ -9,8 +9,8 @@ import numpy as np
 
 ROOT = Path(__file__).parent
 data = json.loads((ROOT / "evidence.json").read_text())["observed"]
-names = ["MSE", "Drift", "Diffusion\n(20-step)"]
-keys = ["mse", "drift", "diffusion"]
+names = ["MSE\n(60k)", "Drift\n(60k)", "Diffusion\n(20-step, 6k)"]
+keys = ["mse_60k", "drift_60k", "diffusion"]
 colors = ["#2878B5", "#D9534F", "#6C757D"]
 
 panels = [

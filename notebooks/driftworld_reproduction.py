@@ -33,8 +33,8 @@ def _(mo):
 
     | Model | Held-out MSE ↓ | 64-frame MSE ↓ | Latency ↓ |
     |---|---:|---:|---:|
-    | MSE one-pass | **0.000792** | **0.00557** | 1.058 ms/frame |
-    | Drift one-pass | 0.045031 | 0.10285 | **1.052 ms/frame** |
+    | MSE one-pass, 60k | **0.000439** | **0.00416** | **1.059 ms/frame** |
+    | Drift one-pass, 60k | 0.047480 | 0.09947 | 1.061 ms/frame |
     | Diffusion, 20 steps | 0.14677 | 0.20815 | 24.840 ms/frame |
 
     This notebook contains the already-produced evidence, so opening it in Molab does
@@ -47,16 +47,16 @@ def _(mo):
 def _():
     results = {
         "MSE": {
-            "heldout_mse": (0.0007920305, 0.0000120761),
-            "rollout_mse": (0.0055697905, 0.0007576110),
-            "latency": (1.0578830, 0.0439160),
-            "action_gain": 0.00000546856,
+            "heldout_mse": (0.0004387173, 0.0000290494),
+            "rollout_mse": (0.0041645779, 0.0004705865),
+            "latency": (1.0587472, 0.0325313),
+            "action_gain": 0.0004908421,
         },
         "Drift": {
-            "heldout_mse": (0.0450313585, 0.0002189236),
-            "rollout_mse": (0.1028471915, 0.0258041564),
-            "latency": (1.0520106, 0.0342399),
-            "action_gain": 0.000000717584,
+            "heldout_mse": (0.0474803722, 0.0001417005),
+            "rollout_mse": (0.0994707551, 0.0173170482),
+            "latency": (1.0609791, 0.0424894),
+            "action_gain": 0.00000292808,
         },
         "Diffusion (20-step)": {
             "heldout_mse": (0.1467726175, 0.02136567),
@@ -191,14 +191,17 @@ def _(mo):
     | Full field, 6k | 0.04503 | 0.10285 |
     | Attraction only, 6k | **0.001400** | **0.004318** |
     | Attraction only, 20k | **0.001083** | **0.003926** |
+    | Attraction only, 60k | **0.000780** | **0.004518** |
     | Static-negative only, 6k | 0.01673 | 0.02197 |
     | Peer-negative only, 6k | 0.05128 | 0.12863 |
 
-    Attraction-only improved with added training and beat the 6k direct-MSE
-    control's rollout MSE (0.00557), though not its held-out MSE (0.000792).
-    Both reconstructed repulsive terms
-    independently degraded training. This localizes the mismatch, but it does not
-    test the authors' unavailable source implementation.
+    At 20k, attraction-only beat matched MSE on rollout mean; at 60k, matched MSE
+    had the better means on both held-out (0.000439) and rollout (0.004165), with
+    overlapping rollout seed spreads. Both reconstructed repulsive terms
+    independently degraded training. At 6k, repulsion weights 0, 0.001, 0.01,
+    0.1, 0.5, and 1.0 increased held-out MSE monotonically from 0.001400 to
+    0.045031. This localizes the mismatch, but it does not test the authors'
+    unavailable source implementation.
     """)
     return
 
@@ -209,13 +212,14 @@ def _(mo):
     ## Evidence boundary and compute
 
     The paper reports 8.73M parameters and does not publish the exact Push-T source,
-    split, field constants, or training duration. This reconstruction has 4.80M
-    parameters and 6,000 updates per seed. It omits LPIPS and policy ranking.
+    split, field implementation, or training duration. This reconstruction has 4.80M
+    parameters; the formal MSE/Drift pair used 60,000 updates per seed. It omits LPIPS
+    and policy ranking.
 
     Formal runs used the configured **Kubernetes** backend, **NVIDIA RTX PRO 6000
     Blackwell** GPUs, and a peak of **16 concurrent GPUs**. The detailed public report
-    records the per-run wall times, sensitivity checks, experiment branches, and final
-    campaign elapsed time.
+    records the per-run wall times, sensitivity checks, and experiment branches. The
+    campaign ran for **4.389 elapsed wall hours**.
 
     **Bottom line:** the latency advantage reproduced; the Drift-over-MSE visual-quality
     effect did not appear under this bounded public-data reconstruction.
