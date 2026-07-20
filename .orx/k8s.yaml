@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: driftworld-{{ORX_RUN}}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 39600
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        nvidia.com/gpu.product: NVIDIA-RTX-PRO-6000-Blackwell-Server-Edition
+      containers:
+        - name: run
+          image: pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime
+          command: ["bash", "-c", "$ORX_SCRIPT"]
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: TORCH_NCCL_ASYNC_ERROR_HANDLING
+              value: "1"
+          resources:
+            requests:
+              nvidia.com/gpu: "8"
+              cpu: "48"
+              memory: "384Gi"
+            limits:
+              nvidia.com/gpu: "8"
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Gi
