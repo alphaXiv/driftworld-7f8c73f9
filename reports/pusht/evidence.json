@@ -1,0 +1,83 @@
+{
+  "paper": {
+    "source": "DriftWorld Table 1, Push-T 64-frame evaluation",
+    "hardware": "NVIDIA H100",
+    "mse": {
+      "mse": 0.0035,
+      "ssim": 0.9704,
+      "psnr": 28.0578,
+      "lpips": 0.0225,
+      "latency_ms_per_frame": 3.7
+    },
+    "drift": {
+      "mse": 0.0007,
+      "ssim": 0.9925,
+      "psnr": 33.7753,
+      "lpips": 0.0050,
+      "latency_ms_per_frame": 3.7
+    },
+    "diffusion_latency_ms_per_frame": 10.4
+  },
+  "observed": {
+    "mse": {
+      "branch": "orx/mse-independent-seeds",
+      "seeds": 8,
+      "heldout_mse_mean": 0.0007920305,
+      "heldout_mse_std": 0.0000120761,
+      "heldout_ssim_mean": 0.9737187,
+      "heldout_psnr_mean": 31.0130868,
+      "rollout_mse_mean": 0.0055697905,
+      "rollout_mse_std": 0.0007576110,
+      "rollout_ssim_mean": 0.8824487,
+      "rollout_psnr_mean": 22.5828907,
+      "latency_ms_per_frame_mean": 1.0578830,
+      "latency_ms_per_frame_std": 0.0439160,
+      "action_effect_l1_mean": 0.00119633,
+      "true_vs_shuffled_mse_gain_mean": 0.00000546856,
+      "orx_duration_seconds": 287,
+      "script_wall_seconds": 169.985
+    },
+    "drift": {
+      "branch": "orx/drift-independent-seeds",
+      "seeds": 8,
+      "heldout_mse_mean": 0.0450313585,
+      "heldout_mse_std": 0.0002189236,
+      "heldout_ssim_mean": 0.8829810,
+      "heldout_psnr_mean": 13.4649008,
+      "rollout_mse_mean": 0.1028471915,
+      "rollout_mse_std": 0.0258041564,
+      "rollout_ssim_mean": 0.5463527,
+      "rollout_psnr_mean": 10.0113687,
+      "latency_ms_per_frame_mean": 1.0520106,
+      "latency_ms_per_frame_std": 0.0342399,
+      "action_effect_l1_mean": 0.000991681,
+      "true_vs_shuffled_mse_gain_mean": 0.000000717584,
+      "orx_duration_seconds": 783,
+      "script_wall_seconds": 662.405
+    },
+    "diffusion": {
+      "branch": "orx/20-step-diffusion-independent-seeds",
+      "seeds": 8,
+      "heldout_mse_mean": 0.1467726175,
+      "heldout_mse_std": 0.02136567,
+      "heldout_ssim_mean": 0.2368599,
+      "heldout_psnr_mean": 8.3843159,
+      "rollout_mse_mean": 0.2081539854,
+      "rollout_mse_std": 0.0255715,
+      "rollout_ssim_mean": 0.1688370,
+      "rollout_psnr_mean": 6.8499253,
+      "latency_ms_per_frame_mean": 24.8399542,
+      "latency_ms_per_frame_std": 0.58423,
+      "action_effect_l1_mean": 0.00609489,
+      "true_vs_shuffled_mse_gain_mean": 0.0000113966,
+      "orx_duration_seconds": 246,
+      "script_wall_seconds": 207.741,
+      "interpretation": "undertrained 20-step timing reference; not a quality control"
+    }
+  },
+  "compute": {
+    "backend": "kubernetes",
+    "gpu_model": "NVIDIA RTX PRO 6000 Blackwell",
+    "peak_concurrent_gpu_count": 16
+  }
+}
