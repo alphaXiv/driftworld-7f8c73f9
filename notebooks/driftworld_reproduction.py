@@ -181,6 +181,31 @@ def _(mo, results):
 @app.cell
 def _(mo):
     mo.md(r"""
+    ## Where the reconstruction diverged
+
+    Two scale checks (0.1 and 0.01) and a 20,000-update run left the full-field
+    held-out MSE near 0.045–0.047. The decisive diagnostic removed repulsion:
+
+    | Drift variant | Held-out MSE ↓ | 64-frame MSE ↓ |
+    |---|---:|---:|
+    | Full field, 6k | 0.04503 | 0.10285 |
+    | Attraction only, 6k | **0.001400** | **0.004318** |
+    | Attraction only, 20k | **0.001083** | **0.003926** |
+    | Static-negative only, 6k | 0.01673 | 0.02197 |
+    | Peer-negative only, 6k | 0.05128 | 0.12863 |
+
+    Attraction-only improved with added training and beat the 6k direct-MSE
+    control's rollout MSE (0.00557), though not its held-out MSE (0.000792).
+    Both reconstructed repulsive terms
+    independently degraded training. This localizes the mismatch, but it does not
+    test the authors' unavailable source implementation.
+    """)
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""
     ## Evidence boundary and compute
 
     The paper reports 8.73M parameters and does not publish the exact Push-T source,

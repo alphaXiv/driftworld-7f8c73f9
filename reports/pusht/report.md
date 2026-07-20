@@ -74,7 +74,16 @@ The Drift advantage was positive in all eight seeds, so the output is action-con
 
 ## Robustness and evidence boundaries
 
-The paper does not state an explicit multiplier for its fixed-point drift update. Two single-factor sensitivity runs changed only this multiplier to 0.1 and 0.01 while retaining eight seeds and the same training protocol. Their terminal results are incorporated into the final evidence table when available; they are robustness checks, not silent replacements for the primary scale-1.0 test.
+The paper does not state an explicit multiplier for its fixed-point drift update. Two single-factor checks changed only that multiplier. Neither repaired quality, which is expected under Adam's approximate scale invariance. A 20,000-update run also remained poor. Values are eight-seed means:
+
+| Full reconstructed field | Held-out MSE ↓ | 64-frame MSE ↓ |
+|---|---:|---:|
+| Scale 1.0, 6k updates | 0.04503 | 0.10285 |
+| Scale 0.1, 6k updates | 0.04495 | 0.10346 |
+| Scale 0.01, 6k updates | 0.04484 | 0.10416 |
+| Scale 1.0, 20k updates | 0.04676 | 0.09820 |
+
+The more revealing test decomposed the reconstructed field. Removing both repulsive terms and retaining attraction alone reduced held-out MSE to **0.001400** and produced **0.004318** rollout MSE—still worse than direct MSE on held-out windows, but better than its 0.00557 rollout result. Extending attraction-only training to 20,000 updates improved those values to **0.001083** and **0.003926**. Adding only the static-frame negative raised held-out MSE to 0.01673 and caused three seeds to collapse to an action-insensitive constant predictor. Adding only peer negatives raised it to 0.05128. Thus the observed discrepancy localizes to the reconstructed repulsion rather than the one-pass integrator or action-FiLM path. Because the authors' exact field implementation is unavailable, this is a diagnostic of our reconstruction, not an ablation of their code.
 
 The initial Kubernetes jobs terminated before Python because the injected script was quoted incorrectly. Successor runs fixed the manifest and then replaced stalled NCCL synchronization with Gloo control plus independent models. Those setup attempts produced no metrics and are excluded from every plot and claim assessment.
 
