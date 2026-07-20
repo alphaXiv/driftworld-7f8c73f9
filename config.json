@@ -1,5 +1,5 @@
 {
-  "objective": "mse",
+  "objective": "diffusion",
   "seed": 260715065,
   "history": 4,
   "horizon": 4,
