@@ -399,6 +399,7 @@ def main():
                 act_n = act[:, None].expand(-1, n, -1, -1).reshape(b * n, t, 2)
                 pred = model(torch.randn(b * n, t, c, h, w, device=device), obs_n, act_n).reshape(b, n, t, c, h, w)
                 field = normalized_drift(pred, target, obs[:, -1], cfg["temperatures"])
+                field = field * cfg.get("drift_step_scale", 1.0)
                 loss = F.mse_loss(pred, (pred + field).detach())
             elif cfg["objective"] == "diffusion":
                 b = target.shape[0]
