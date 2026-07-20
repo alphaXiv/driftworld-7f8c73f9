@@ -30,8 +30,9 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 def distributed_setup():
     local_rank = int(os.environ["LOCAL_RANK"])
     torch.cuda.set_device(local_rank)
-    device = torch.device("cuda", local_rank)
-    dist.init_process_group("nccl", device_id=device)
+    # Selecting the local CUDA device before (not during) process-group creation
+    # avoids both ambiguous barrier placement and eager communicator deadlock.
+    dist.init_process_group("nccl")
     rank = dist.get_rank()
     return rank, local_rank, dist.get_world_size()
 
