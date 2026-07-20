@@ -61,7 +61,7 @@ def prepare_dataset(zip_path: str, rank: int):
         store.close()
         ready.touch()
         print(f"DATASET frames={len(images)} episodes={len(ends)} image_shape={images.shape[1:]}")
-    dist.barrier()
+    dist.barrier(device_ids=[torch.cuda.current_device()])
     images = np.load(cache / "images.npy", mmap_mode="r")
     actions = np.load(cache / "actions.npy", mmap_mode="r")
     ends = np.load(cache / "episode_ends.npy")
@@ -424,7 +424,7 @@ def main():
                 elapsed = time.time() - start_wall
                 print(f"TRAIN step={step} loss={value.item()/world:.8f} lr={lr:.3e} grad_norm={float(grad):.4f} elapsed_s={elapsed:.1f}")
 
-    dist.barrier()
+    dist.barrier(device_ids=[torch.cuda.current_device()])
     if rank == 0:
         eval_start = time.time()
         metrics = evaluate(ema, cfg["objective"], cfg, images, norm_actions, test_idx, rollout_idx, device)
@@ -455,7 +455,7 @@ def main():
         print("FINAL_RESULT_JSON_BEGIN")
         print(json.dumps(result, indent=2, sort_keys=True))
         print("FINAL_RESULT_JSON_END")
-    dist.barrier()
+    dist.barrier(device_ids=[torch.cuda.current_device()])
     dist.destroy_process_group()
 
 
