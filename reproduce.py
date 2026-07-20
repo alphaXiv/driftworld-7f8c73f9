@@ -196,7 +196,7 @@ class VideoUNet(nn.Module):
         return self.out(x.reshape(b * t, self.base, h, w)).reshape(b, t, 3, h, w)
 
 
-def normalized_drift(pred, target, still, temperatures):
+def normalized_drift(pred, target, still, temperatures, omit_static=False):
     """Pixel-space conditional attraction-repulsion field from the paper appendix.
 
     Each spatial location is an independent field whose feature is the flattened
@@ -207,7 +207,7 @@ def normalized_drift(pred, target, still, temperatures):
     pos = target.permute(0, 3, 4, 1, 2).reshape(b, h, w, 1, t * c)
     still_chunk = still[:, None].expand(-1, t, -1, -1, -1)
     still_chunk = still_chunk.permute(0, 3, 4, 1, 2).reshape(b, h, w, 1, t * c)
-    negatives = torch.cat([x.detach(), still_chunk], dim=3)
+    negatives = x.detach() if omit_static else torch.cat([x.detach(), still_chunk], dim=3)
     cloud = torch.cat([pos, negatives], dim=3)
     # Mean pairwise scale, detached, with a floor for nearly-static pixels.
     pair = torch.cdist(cloud.float(), cloud.float())
@@ -398,7 +398,10 @@ def main():
                 obs_n = obs[:, None].expand(-1, n, -1, -1, -1, -1).reshape(b * n, cfg["history"], c, h, w)
                 act_n = act[:, None].expand(-1, n, -1, -1).reshape(b * n, t, 2)
                 pred = model(torch.randn(b * n, t, c, h, w, device=device), obs_n, act_n).reshape(b, n, t, c, h, w)
-                field = normalized_drift(pred, target, obs[:, -1], cfg["temperatures"])
+                field = normalized_drift(
+                    pred, target, obs[:, -1], cfg["temperatures"],
+                    cfg.get("drift_omit_static", False),
+                )
                 loss = F.mse_loss(pred, (pred + field).detach())
             elif cfg["objective"] == "diffusion":
                 b = target.shape[0]
