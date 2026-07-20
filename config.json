@@ -7,7 +7,7 @@
   "base_channels": 96,
   "channel_multipliers": [1, 1, 1, 1],
   "res_blocks": 2,
-  "negative_samples": 8,
+  "negative_samples": 1,
   "temperatures": [0.02, 0.05, 0.2],
   "batch_per_gpu": 2,
   "max_steps": 6000,
