@@ -1,3 +1,12 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "marimo>=0.14.0",
+#   "matplotlib>=3.8",
+#   "numpy>=1.26",
+# ]
+# ///
+
 import marimo
 
 __generated_with = "0.23.14"
@@ -7,111 +16,163 @@ app = marimo.App(width="medium")
 @app.cell
 def _():
     import marimo as mo
+    import matplotlib.pyplot as plt
+    import numpy as np
 
-    return (mo,)
+    return mo, np, plt
 
 
 @app.cell
 def _(mo):
     mo.md(r"""
-    # DriftWorld on Push-T: inspect the evidence
+    # DriftWorld on Push-T: evidence first
 
-    This tutorial is self-contained: the formal Kubernetes results are embedded below, so opening it in Molab does **not** rerun training. We ask whether a one-step drifting-field objective improves a matched MSE video predictor while preserving the latency advantage of one-pass generation.
+    **Result.** The one-pass latency claim reproduced, but the reported drifting-field
+    quality advantage did not appear in this bounded reconstruction. Eight independent
+    seeds per objective gave:
 
-    **Bottom line:** speed partially reproduced; quality did not align in this bounded reconstruction. Drift was 23.6× faster than a matched 20-step sampler, but its 64-frame predictions were substantially worse than direct MSE.
+    | Model | Held-out MSE ↓ | 64-frame MSE ↓ | Latency ↓ |
+    |---|---:|---:|---:|
+    | MSE one-pass | **0.000792** | **0.00557** | 1.058 ms/frame |
+    | Drift one-pass | 0.045031 | 0.10285 | **1.052 ms/frame** |
+    | Diffusion, 20 steps | 0.14677 | 0.20815 | 24.840 ms/frame |
+
+    This notebook contains the already-produced evidence, so opening it in Molab does
+    not rerun expensive training or depend on repository-relative files.
     """)
     return
 
 
 @app.cell
 def _():
-    evidence = {
-        "MSE": {"heldout_mse": 0.00079203, "rollout_mse": 0.00556979, "rollout_ssim": 0.88244869, "latency_ms": 1.05788302, "action_gain": 5.4686e-6},
-        "Drift": {"heldout_mse": 0.04503136, "rollout_mse": 0.10284719, "rollout_ssim": 0.54635274, "latency_ms": 1.05201057, "action_gain": 0.7176e-6},
-        "Diffusion-20": {"heldout_mse": 0.14677262, "rollout_mse": 0.20815399, "rollout_ssim": 0.16883701, "latency_ms": 24.83995419, "action_gain": 11.3966e-6},
+    results = {
+        "MSE": {
+            "heldout_mse": (0.0007920305, 0.0000120761),
+            "rollout_mse": (0.0055697905, 0.0007576110),
+            "latency": (1.0578830, 0.0439160),
+            "action_gain": 0.00000546856,
+        },
+        "Drift": {
+            "heldout_mse": (0.0450313585, 0.0002189236),
+            "rollout_mse": (0.1028471915, 0.0258041564),
+            "latency": (1.0520106, 0.0342399),
+            "action_gain": 0.000000717584,
+        },
+        "Diffusion (20-step)": {
+            "heldout_mse": (0.1467726175, 0.02136567),
+            "rollout_mse": (0.2081539854, 0.0255715),
+            "latency": (24.8399542, 0.58423),
+            "action_gain": 0.0000113966,
+        },
     }
-    return (evidence,)
-
-
-@app.cell
-def _(evidence, mo):
-    summary_rows = [
-        {
-            "method": method,
-            "held-out MSE ↓": values["heldout_mse"],
-            "64-frame MSE ↓": values["rollout_mse"],
-            "64-frame SSIM ↑": values["rollout_ssim"],
-            "ms/frame ↓": values["latency_ms"],
-        }
-        for method, values in evidence.items()
-    ]
-    mo.vstack([
-        mo.md("## The measured comparison"),
-        mo.ui.table(summary_rows, selection=None),
-        mo.md("Values are means over eight independent GPU seeds. The 20-step model is an undertrained latency reference, not a competitive quality baseline."),
-    ])
-    return
+    return (results,)
 
 
 @app.cell
 def _(mo):
-    metric_picker = mo.ui.dropdown(
+    metric = mo.ui.dropdown(
         options={
-            "64-frame SSIM (higher is better)": "rollout_ssim",
-            "64-frame MSE (lower is better)": "rollout_mse",
-            "Latency in ms/frame (lower is better)": "latency_ms",
+            "Held-out one-pass MSE": "heldout_mse",
+            "64-frame autoregressive MSE": "rollout_mse",
+            "Inference latency (ms/frame)": "latency",
         },
-        value="64-frame SSIM (higher is better)",
-        label="Explore a measured metric",
+        value="Held-out one-pass MSE",
+        label="Explore a measured result",
     )
-    metric_picker
-    return (metric_picker,)
+    metric
+    return (metric,)
 
 
 @app.cell
-def _(evidence, metric_picker, mo):
-    selected_key = metric_picker.value
-    selected_values = {name: vals[selected_key] for name, vals in evidence.items()}
-    max_value = max(selected_values.values())
-    bar_rows = "".join(
-        f"<div style='margin:10px 0'><b>{name}</b>: {value:.6g}<div style='height:22px;background:#5b8ff9;width:{max(2, 100*value/max_value):.1f}%'></div></div>"
-        for name, value in selected_values.items()
-    )
-    mo.Html(f"<div style='max-width:700px'>{bar_rows}</div>")
+def _(metric, np, plt, results):
+    names = list(results)
+    means = [results[name][metric.value][0] for name in names]
+    stds = [results[name][metric.value][1] for name in names]
+    colors = ["#2878B5", "#D9534F", "#6C757D"]
+    fig, ax = plt.subplots(figsize=(8.2, 4.2))
+    x = np.arange(len(names))
+    bars = ax.bar(x, means, yerr=stds, capsize=5, color=colors)
+    ax.set_xticks(x, names)
+    ax.set_yscale("log")
+    ax.set_title(metric.selected_key)
+    ax.set_ylabel("Measured value (log scale; lower is better)")
+    ax.grid(axis="y", alpha=0.25)
+    for bar, value in zip(bars, means):
+        label = f"{value:.4g}" if value < 1 else f"{value:.2f}"
+        ax.annotate(label, (bar.get_x() + bar.get_width() / 2, value),
+                    xytext=(0, 7), textcoords="offset points", ha="center")
+    fig.tight_layout()
+    fig
     return
 
 
 @app.cell
 def _(mo):
     mo.md(r"""
-    ## What was implemented
+    ## What was tested
 
-    The generator consumes four RGB history frames, Gaussian noise for four future frames, and four 2-D actions. Spatial convolutions are followed by temporal convolutions; action embeddings provide frame-wise FiLM scale and shift.
+    Push-T is a planar manipulation dataset: an agent must move a T-shaped block by
+    choosing 2-D actions. A world model sees four 96×96 RGB history frames and four
+    future actions, then predicts the next four frames. Rolling the model forward
+    sixteen times produces the 64-frame test.
 
-    For each generated sample $x$, drifting constructs
-
-    $$V(x)=V^+_p(x)-V^-_q(x),$$
-
-    where the positive mean shift points toward the single ground-truth future and the negative mean shift points toward generated peers plus a no-action frame. Fields are normalized and summed for temperatures 0.02, 0.05, and 0.2. Training regresses to the detached target $x+V(x)$. Direct MSE changes only this objective; diffusion changes it to cosine noise prediction and uses 20 DDIM steps at evaluation.
-
-    The exact paper training code was unavailable. Material substitutions were the public 206-episode replay instead of the paper's 500 mixed trajectories, 6,000 updates, and a 4.80M rather than 8.73M parameter reconstruction.
+    The public archive contained 25,650 frames in 206 episodes. The last 50 episodes
+    were fixed as test data, leaving 18,043 training and 6,165 test windows. The MSE,
+    drifting, and diffusion runs used the same reconstructed 4.80M-parameter FiLM
+    spatiotemporal U-Net and eight independently initialized models.
     """)
     return
 
 
 @app.cell
-def _(evidence, mo):
-    drift_speedup = evidence["Diffusion-20"]["latency_ms"] / evidence["Drift"]["latency_ms"]
-    mse_ratio = evidence["Drift"]["rollout_mse"] / evidence["MSE"]["rollout_mse"]
+def _(mo):
+    mo.md(r"""
+    ## How the drifting field differs from MSE
+
+    The direct control learns the future pixels:
+
+    \[
+    \mathcal L_{\text{MSE}} = \lVert G_\theta(z, h, a) - x^+ \rVert_2^2.
+    \]
+
+    DriftWorld instead constructs a local vector field. Generated candidates are
+    attracted to the demonstrated future and repelled from generated peers plus a
+    static-frame negative. The network follows that field through a stopped-gradient
+    fixed-point target:
+
+    \[
+    \mathcal L_{\text{drift}} =
+    \lVert G_\theta(z,h,a) - \operatorname{sg}[G_\theta(z,h,a)+v] \rVert_2^2.
+    \]
+
+    This reconstruction used eight negative samples and temperatures 0.02, 0.05,
+    and 0.2, matching the paper's appendix. The exact field normalization and update
+    magnitude remain uncertain because the public author repository contains no
+    implementation.
+    """)
+    return
+
+
+@app.cell
+def _(mo, results):
+    drift_quality_ratio = results["Drift"]["heldout_mse"][0] / results["MSE"]["heldout_mse"][0]
+    rollout_ratio = results["Drift"]["rollout_mse"][0] / results["MSE"]["rollout_mse"][0]
+    speedup = results["Diffusion (20-step)"]["latency"][0] / results["Drift"]["latency"][0]
     mo.md(
         f"""
-        ## Read the result carefully
+        ## Reading the result
 
-        - **Latency aligned:** the iterative sampler was **{drift_speedup:.1f}× slower** than Drift, while Drift and MSE had matched one-pass latency.
-        - **Quality diverged:** Drift's 64-frame MSE was **{mse_ratio:.1f}× higher** than the MSE control in this setup.
-        - **Conditioning was weak:** shuffled actions increased Drift MSE by only {evidence['Drift']['action_gain']:.2e} on average. The sign was positive in all eight seeds, but the magnitude and poor rollout quality do not establish useful simulated rollouts.
+        - The reconstructed Drift model's held-out MSE was **{drift_quality_ratio:.1f}×**
+          the MSE control's, and its rollout MSE was **{rollout_ratio:.1f}×** higher.
+          This run therefore did not show the paper's reported quality direction.
+        - Drift was **{speedup:.1f}× faster** than the 20-step sampler. This is the cleanest
+          aligned claim: one network evaluation is substantially cheaper than twenty.
+        - Supplying true rather than shuffled actions improved Drift MSE by only
+          **{results['Drift']['action_gain']:.2e}**. The sign was consistent across all
+          eight seeds, but the effect is too small to establish useful control.
 
-        This is therefore a **partial reproduction**, not evidence that the paper's general claim is false. The tested dataset, architecture details, and training duration differ materially from the unreleased author setup.
+        The diffusion model was trained for only 6,000 updates and is included as a timing
+        reference, not as a quality benchmark.
         """
     )
     return
@@ -119,10 +180,20 @@ def _(evidence, mo):
 
 @app.cell
 def _(mo):
-    mo.md("""
-    ## Compute provenance
+    mo.md(r"""
+    ## Evidence boundary and compute
 
-    All formal runs used Kubernetes on NVIDIA RTX PRO 6000 Blackwell Server Edition GPUs. Each method trained eight independent seeds on eight GPUs; peak concurrency was 16 GPUs. The complete campaign lasted 0.541 wall hours. Formal train/eval spans were 170.0 s (MSE), 662.4 s (Drift), and 207.7 s (diffusion). The exact command on every experiment was `bash run.sh`.
+    The paper reports 8.73M parameters and does not publish the exact Push-T source,
+    split, field constants, or training duration. This reconstruction has 4.80M
+    parameters and 6,000 updates per seed. It omits LPIPS and policy ranking.
+
+    Formal runs used the configured **Kubernetes** backend, **NVIDIA RTX PRO 6000
+    Blackwell** GPUs, and a peak of **16 concurrent GPUs**. The detailed public report
+    records the per-run wall times, sensitivity checks, experiment branches, and final
+    campaign elapsed time.
+
+    **Bottom line:** the latency advantage reproduced; the Drift-over-MSE visual-quality
+    effect did not appear under this bounded public-data reconstruction.
     """)
     return
 
