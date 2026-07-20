@@ -278,8 +278,8 @@
     "backend": "kubernetes",
     "gpu_model": "NVIDIA RTX PRO 6000 Blackwell",
     "peak_concurrent_gpu_count": 16,
-    "campaign_start_utc": "2026-07-20T09:35:13Z",
-    "campaign_end_utc": "2026-07-20T13:58:34Z",
-    "campaign_wall_hours": 4.3892
+    "campaign_start_utc": "2026-07-20T09:35:13.875Z",
+    "campaign_end_utc": "2026-07-20T13:58:34.324Z",
+    "campaign_wall_hours": 4.3890
   }
 }
