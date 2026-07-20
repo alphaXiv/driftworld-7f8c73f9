@@ -196,7 +196,7 @@ class VideoUNet(nn.Module):
         return self.out(x.reshape(b * t, self.base, h, w)).reshape(b, t, 3, h, w)
 
 
-def normalized_drift(pred, target, still, temperatures):
+def normalized_drift(pred, target, still, temperatures, repulsion_weight=1.0):
     """Pixel-space conditional attraction-repulsion field from the paper appendix.
 
     Each spatial location is an independent field whose feature is the flattened
@@ -226,7 +226,7 @@ def normalized_drift(pred, target, still, temperatures):
         kneg = torch.exp(-dneg / (tau * root_c))
         kneg[..., :n] = kneg[..., :n].masked_fill(self_mask, 0)
         vneg = (kneg[..., None] * delta).sum(dim=-2) / kneg.sum(dim=-1, keepdim=True).clamp_min(1e-8)
-        field = vpos - vneg
+        field = vpos - repulsion_weight * vneg
         field = field / torch.linalg.vector_norm(field.float(), dim=-1, keepdim=True).clamp_min(1e-6).to(field.dtype)
         total = total + field
     return total.reshape(b, h, w, n, t, c).permute(0, 3, 4, 5, 1, 2).contiguous()
@@ -398,7 +398,13 @@ def main():
                 obs_n = obs[:, None].expand(-1, n, -1, -1, -1, -1).reshape(b * n, cfg["history"], c, h, w)
                 act_n = act[:, None].expand(-1, n, -1, -1).reshape(b * n, t, 2)
                 pred = model(torch.randn(b * n, t, c, h, w, device=device), obs_n, act_n).reshape(b, n, t, c, h, w)
-                field = normalized_drift(pred, target, obs[:, -1], cfg["temperatures"])
+                field = normalized_drift(
+                    pred,
+                    target,
+                    obs[:, -1],
+                    cfg["temperatures"],
+                    cfg.get("repulsion_weight", 1.0),
+                )
                 loss = F.mse_loss(pred, (pred + field).detach())
             elif cfg["objective"] == "diffusion":
                 b = target.shape[0]
