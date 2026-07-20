@@ -24,14 +24,16 @@ import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 import zarr
-from torch.nn.parallel import DistributedDataParallel as DDP
 
 
 def distributed_setup():
-    dist.init_process_group("nccl")
-    rank = dist.get_rank()
     local_rank = int(os.environ["LOCAL_RANK"])
     torch.cuda.set_device(local_rank)
+    # NCCL communicator creation stalls on the target cluster. Gloo is used only
+    # for control/metric aggregation; each rank trains a complete independent
+    # model on its own GPU, giving eight measured seeds per objective.
+    dist.init_process_group("gloo")
+    rank = dist.get_rank()
     return rank, local_rank, dist.get_world_size()
 
 
@@ -371,9 +373,8 @@ def main():
     model = VideoUNet(cfg["history"], cfg["base_channels"], cfg["res_blocks"]).to(device)
     if rank == 0:
         print(f"MODEL parameters={sum(p.numel() for p in model.parameters())}")
-    ddp = DDP(model, device_ids=[local_rank], broadcast_buffers=False, gradient_as_bucket_view=True)
     ema = copy.deepcopy(model).eval().requires_grad_(False)
-    opt = torch.optim.AdamW(ddp.parameters(), lr=cfg["learning_rate"], betas=(0.9, 0.95), weight_decay=cfg["weight_decay"])
+    opt = torch.optim.AdamW(model.parameters(), lr=cfg["learning_rate"], betas=(0.9, 0.95), weight_decay=cfg["weight_decay"])
     diffusion_abar = diffusion_schedule(device)
     rng = np.random.default_rng(cfg["seed"] + rank * 1009)
     scaler = None
@@ -389,14 +390,14 @@ def main():
         opt.zero_grad(set_to_none=True)
         with torch.autocast("cuda", dtype=torch.bfloat16):
             if cfg["objective"] == "mse":
-                pred = ddp(torch.randn_like(target), obs, act)
+                pred = model(torch.randn_like(target), obs, act)
                 loss = F.mse_loss(pred, target)
             elif cfg["objective"] == "drift":
                 n = cfg["negative_samples"]
                 b, t, c, h, w = target.shape
                 obs_n = obs[:, None].expand(-1, n, -1, -1, -1, -1).reshape(b * n, cfg["history"], c, h, w)
                 act_n = act[:, None].expand(-1, n, -1, -1).reshape(b * n, t, 2)
-                pred = ddp(torch.randn(b * n, t, c, h, w, device=device), obs_n, act_n).reshape(b, n, t, c, h, w)
+                pred = model(torch.randn(b * n, t, c, h, w, device=device), obs_n, act_n).reshape(b, n, t, c, h, w)
                 field = normalized_drift(pred, target, obs[:, -1], cfg["temperatures"])
                 loss = F.mse_loss(pred, (pred + field).detach())
             elif cfg["objective"] == "diffusion":
@@ -405,50 +406,83 @@ def main():
                 noise = torch.randn_like(target)
                 a = diffusion_abar[ti].sqrt()[:, None, None, None, None]
                 noised = a * target + (1 - diffusion_abar[ti]).sqrt()[:, None, None, None, None] * noise
-                pred = ddp(noised, obs, act, ti.float() / 999)
+                pred = model(noised, obs, act, ti.float() / 999)
                 loss = F.mse_loss(pred, noise)
             else:
                 raise ValueError(cfg["objective"])
         loss.backward()
-        grad = torch.nn.utils.clip_grad_norm_(ddp.parameters(), cfg["gradient_clip"])
+        grad = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg["gradient_clip"])
         opt.step()
         with torch.no_grad():
             for ep, p in zip(ema.parameters(), model.parameters()):
                 ep.lerp_(p, 1 - cfg["ema_decay"])
         if step == 1 or step % 100 == 0:
-            value = loss.detach().float()
+            value = loss.detach().float().cpu()
             dist.all_reduce(value)
             if rank == 0:
                 elapsed = time.time() - start_wall
                 print(f"TRAIN step={step} loss={value.item()/world:.8f} lr={lr:.3e} grad_norm={float(grad):.4f} elapsed_s={elapsed:.1f}")
 
     dist.barrier()
+    eval_start = time.time()
+    metrics = evaluate(ema, cfg["objective"], cfg, images, norm_actions, test_idx, rollout_idx, device)
+    checkpoint = {
+        "model": ema.state_dict(), "config": cfg,
+        "action_min": train_min, "action_max": train_max,
+    }
+    checkpoint_path = f"/tmp/driftworld_checkpoint_seed{rank}.pt"
+    torch.save(checkpoint, checkpoint_path)
+    with open(checkpoint_path, "rb") as f:
+        checkpoint_sha = hashlib.sha256(f.read()).hexdigest()
+    total = time.time() - start_wall
+    seed_result = {
+        "seed_rank": rank,
+        "seed": cfg["seed"] + rank,
+        "metrics": metrics,
+        "wall_seconds": total,
+        "checkpoint_sha256": checkpoint_sha,
+    }
+    gathered = [None] * world if rank == 0 else None
+    dist.gather_object(seed_result, gathered, dst=0)
     if rank == 0:
-        eval_start = time.time()
-        metrics = evaluate(ema, cfg["objective"], cfg, images, norm_actions, test_idx, rollout_idx, device)
-        checkpoint = {
-            "model": ema.state_dict(), "config": cfg,
-            "action_min": train_min, "action_max": train_max,
+        def aggregate_metric(path):
+            values = []
+            for item in gathered:
+                value = item["metrics"]
+                for key in path:
+                    value = value[key]
+                values.append(float(value))
+            return {"mean": float(np.mean(values)), "std": float(np.std(values)), "values": values}
+
+        aggregate = {
+            "heldout_one_pass": {
+                key: aggregate_metric(["heldout_one_pass", key])
+                for key in metrics["heldout_one_pass"]
+            },
+            "autoregressive_64_frame": {
+                key: aggregate_metric(["autoregressive_64_frame", key])
+                for key in metrics["autoregressive_64_frame"]
+            },
+            "latency_ms_per_chunk": aggregate_metric(["latency_ms_per_chunk"]),
+            "latency_ms_per_frame": aggregate_metric(["latency_ms_per_frame"]),
+            "fps": aggregate_metric(["fps"]),
         }
-        torch.save(checkpoint, "/tmp/driftworld_checkpoint.pt")
-        with open("/tmp/driftworld_checkpoint.pt", "rb") as f:
-            checkpoint_sha = hashlib.sha256(f.read()).hexdigest()
-        total = time.time() - start_wall
         result = {
             "schema": "driftworld-reproduction-v1",
             "objective": cfg["objective"],
             "paper_id": "2607.15065",
             "dataset": "public Diffusion Policy Push-T demonstrations",
             "split": {"train_windows": len(train_idx), "test_windows": len(test_idx), "test_episodes": cfg["test_episodes"]},
-            "metrics": metrics,
+            "metrics": aggregate,
+            "per_seed": gathered,
             "compute": {
                 "backend": "kubernetes",
                 "gpu_model": torch.cuda.get_device_name(0),
                 "gpu_count": world,
-                "train_eval_wall_seconds": total,
+                "train_eval_wall_seconds": max(item["wall_seconds"] for item in gathered),
                 "eval_seconds": time.time() - eval_start,
             },
-            "checkpoint_sha256": checkpoint_sha,
+            "parallelism": "8 independent GPU seeds coordinated with Gloo",
         }
         print("FINAL_RESULT_JSON_BEGIN")
         print(json.dumps(result, indent=2, sort_keys=True))
